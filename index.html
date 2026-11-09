@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Чертёж коллектива — кроссворд</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Russo+One&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#0f2f57; --paper2:#0b2547; --line:rgba(160,205,255,.16); --edge:#7fb4ec; --ink:#eaf4ff;
+  --dim:#9fc0e4; --hi:rgba(86,174,255,.22); --sel:#ff8a1f; --hint:#ffc46b; --ok:#5fe3a1; --bad:#ff6b6b;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:'IBM Plex Mono',ui-monospace,Consolas,monospace;color:var(--ink);min-height:100vh;padding:22px 14px 44px;
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+.sheet{max-width:1080px;margin:0 auto;border:2px solid var(--edge);padding:14px;background:rgba(11,37,71,.55)}
+.title-block{display:grid;grid-template-columns:1fr auto;border:1.5px solid var(--edge);margin-bottom:14px}
+.title-block>div{padding:10px 14px}
+.title-block .name{border-right:1.5px solid var(--edge)}
+h1{font-family:'Russo One','IBM Plex Mono',sans-serif;font-weight:400;font-size:clamp(22px,4.6vw,40px);margin:0;letter-spacing:.01em;line-height:1.1}
+.sub{margin:4px 0 0;color:var(--dim);font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(3,auto);gap:4px 18px;align-content:center;font-size:12px;color:var(--dim)}
+.stats b{display:block;font-size:20px;color:var(--ink);font-weight:600}
+.meter{grid-column:1/-1;height:6px;border:1px solid var(--edge)}
+.meter i{display:block;height:100%;width:0;background:var(--sel);transition:width .25s}
+@media(max-width:620px){.title-block{grid-template-columns:1fr}.title-block .name{border-right:0;border-bottom:1.5px solid var(--edge)}}
+
+.main{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+.plan{overflow-x:auto;padding:6px}
+#grid{display:grid;gap:0;width:max-content;margin:0 auto}
+.cell{position:relative;width:var(--s);height:var(--s);margin:0 -1px -1px 0}
+.cell input{width:100%;height:100%;border:1.5px solid var(--edge);border-radius:0;background:var(--paper2);color:var(--ink);text-align:center;
+  font:600 calc(var(--s)*.52) 'IBM Plex Mono',monospace;text-transform:uppercase;padding:0;cursor:pointer;outline:none;caret-color:transparent;transition:background .12s}
+.cell input.inword{background:#173f72}
+.cell input.sel{background:var(--sel);color:#1a1205;z-index:2}
+.cell input.hinted{color:var(--hint)}
+.cell input.sel.hinted{color:#1a1205}
+.cell input.right{color:var(--ok)}
+.cell input.wrong{background:rgba(255,107,107,.3);color:#fff}
+.cell input:focus-visible{outline:2px solid #fff;outline-offset:1px;z-index:3}
+.num{position:absolute;top:1px;left:3px;font-size:calc(var(--s)*.25);color:var(--dim);pointer-events:none;line-height:1;z-index:3}
+.cell input.sel+.num{color:#1a1205}
+
+.panel{display:flex;flex-direction:column;gap:14px}
+.tools{display:flex;flex-wrap:wrap;gap:8px}
+button{font:500 14px 'IBM Plex Mono',monospace;color:var(--ink);background:transparent;border:1.5px solid var(--edge);padding:9px 13px;cursor:pointer;transition:background .12s,color .12s}
+button:hover{background:var(--edge);color:#06213f}
+button.main-btn{background:var(--sel);border-color:var(--sel);color:#1a1205;font-weight:600}
+button.main-btn:hover{background:#ffa74f}
+button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.group{border:1.5px solid var(--edge);padding:10px 12px}
+.group h2{font-family:'Russo One',sans-serif;font-weight:400;font-size:16px;margin:0 0 6px}
+.group ol{list-style:none;margin:0;padding:0}
+.group li{display:flex;gap:8px;padding:6px 6px;cursor:pointer;font-size:14px;line-height:1.35;border-left:3px solid transparent}
+.group li:hover{background:var(--hi)}
+.group li.active{background:var(--hi);border-left-color:var(--sel)}
+.group li.done{color:var(--ok)}
+.group li.done span{text-decoration:line-through;text-decoration-color:rgba(95,227,161,.6)}
+.group li b{min-width:24px;color:var(--hint);font-weight:600}
+.group li small{color:var(--dim)}
+#win{display:none;border:2px solid var(--ok);color:var(--ok);padding:12px 14px;font-weight:600}
+#win.show{display:block}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="title-block">
+    <div class="name">
+      <h1>Чертёж коллектива</h1>
+      <p class="sub">Кроссворд по теме «Трудовой коллектив». Клик по выбранной клетке меняет направление.</p>
+    </div>
+    <div class="stats">
+      <div>время<b id="time">00:00</b></div>
+      <div>клетки<b id="fill">0/0</b></div>
+      <div>подсказки<b id="hints">0</b></div>
+      <div class="meter"><i id="bar"></i></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="plan"><div id="grid" aria-label="Сетка кроссворда"></div></div>
+    <div class="panel">
+      <div class="tools">
+        <button class="main-btn" id="bLetter">Открыть букву</button>
+        <button id="bWord">Открыть слово</button>
+        <button id="bCheck">Проверить</button>
+        <button id="bReset">Сначала</button>
+      </div>
+      <div id="win">Чертёж утверждён: кроссворд решён!</div>
+      <div class="group"><h2>По горизонтали</h2><ol id="cAcross"></ol></div>
+      <div class="group"><h2>По вертикали</h2><ol id="cDown"></ol></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// r, c — строка и столбец первой буквы (могут быть отрицательными). Сетка и номера строятся сами.
+const WORDS = [
+  {a:'ДИСЦИПЛИНА', r:3,  c:0,  d:'across', q:'Соблюдение порядка и правил трудового распорядка'},
+  {a:'ОТПУСК',     r:1,  c:5,  d:'down',   q:'Оплачиваемый период отдыха от работы'},
+  {a:'КОМАНДА',    r:-1, c:8,  d:'down',   q:'Группа людей, работающих над общей задачей'},
+  {a:'НАЧАЛЬНИК',  r:6,  c:-3, d:'across', q:'Руководитель отдела или подразделения'},
+  {a:'ДОЛЖНОСТЬ',  r:2,  c:-3, d:'down',   q:'Служебное положение работника в организации'},
+  {a:'ТАБЕЛЬ',     r:9,  c:-3, d:'across', q:'Документ учёта рабочего времени'},
+  {a:'ЛЮДИ',       r:9,  c:1,  d:'down',   q:'Из них состоит любой коллектив'},
+  {a:'БРИГАДА',    r:9,  c:-1, d:'down',   q:'Небольшая рабочая группа с общим заданием'}
+];
+
+const $ = id => document.getElementById(id);
+const gridEl = $('grid'), cells = new Map(), key=(r,c)=>r+','+c;
+const norm = s => s.toUpperCase().replace(/Ё/g,'Е');
+const cellsOf = w => Array.from({length:w.a.length},(_,i)=>[w.r+(w.d==='down'?i:0), w.c+(w.d==='across'?i:0)]);
+
+const all = WORDS.flatMap(cellsOf);
+const minR=Math.min(...all.map(x=>x[0])), maxR=Math.max(...all.map(x=>x[0]));
+const minC=Math.min(...all.map(x=>x[1])), maxC=Math.max(...all.map(x=>x[1]));
+const rows=maxR-minR+1, cols=maxC-minC+1;
+
+const startKeys=[...new Set(WORDS.map(w=>key(w.r,w.c)))].sort((x,y)=>{
+  const [a,b]=x.split(',').map(Number),[c,d]=y.split(',').map(Number); return a-c||b-d;});
+WORDS.forEach(w=>w.n=startKeys.indexOf(key(w.r,w.c))+1);
+
+function sizeCells(){
+  const avail=Math.min(innerWidth-70,640);
+  gridEl.style.setProperty('--s', Math.max(28,Math.min(46,Math.floor(avail/cols)))+'px');
+}
+sizeCells(); addEventListener('resize',sizeCells);
+gridEl.style.gridTemplateColumns=`repeat(${cols},var(--s))`;
+gridEl.style.gridTemplateRows=`repeat(${rows},var(--s))`;
+
+WORDS.forEach((w,i)=>cellsOf(w).forEach(([r,c],j)=>{
+  let o=cells.get(key(r,c));
+  if(!o){o={r,c,ch:w.a[j],words:[],hinted:false};cells.set(key(r,c),o);}
+  o.words.push(i);
+}));
+
+let sel=null, dir='across', again=false, t0=null, timer=null, solvedOnce=false;
+const val = o => norm(o.el.value);
+const ok  = o => val(o)===o.ch;
+
+cells.forEach(o=>{
+  const wrap=document.createElement('div'); wrap.className='cell';
+  wrap.style.gridRow=o.r-minR+1; wrap.style.gridColumn=o.c-minC+1;
+  const inp=document.createElement('input');
+  inp.maxLength=2; inp.autocomplete='off'; inp.autocapitalize='characters'; inp.spellcheck=false; inp.setAttribute('aria-label','Клетка');
+  wrap.appendChild(inp);
+  const w=WORDS.find(w=>w.r===o.r&&w.c===o.c);
+  if(w){const s=document.createElement('span');s.className='num';s.textContent=w.n;wrap.appendChild(s);}
+  o.el=inp; gridEl.appendChild(wrap);
+
+  inp.addEventListener('focus',()=>{ if(sel!==o) select(o); });
+  inp.addEventListener('click',()=>{ if(again) toggleDir(); again=true; });
+  inp.addEventListener('beforeinput',e=>{ if(o.hinted && e.inputType!=='deleteContentBackward') e.preventDefault(); });
+  inp.addEventListener('input',()=>{
+    const v=norm(inp.value).replace(/[^А-ЯA-Z]/g,'');
+    inp.value=v.slice(-1); inp.classList.remove('wrong','right');
+    if(v){ startTimer(); move(1); }
+    refresh();
+  });
+  inp.addEventListener('keydown',e=>{
+    const k=e.key;
+    if(k==='Backspace'&&!inp.value){ move(-1); if(sel&&!sel.hinted) sel.el.value=''; e.preventDefault(); refresh(); }
+    else if(k==='ArrowRight'){dir='across';step(0,1);e.preventDefault();}
+    else if(k==='ArrowLeft'){dir='across';step(0,-1);e.preventDefault();}
+    else if(k==='ArrowDown'){dir='down';step(1,0);e.preventDefault();}
+    else if(k==='ArrowUp'){dir='down';step(-1,0);e.preventDefault();}
+    else if(k==='Enter'||k===' '){toggleDir();e.preventDefault();}
+  });
+});
+
+function activeIdx(){
+  if(!sel) return null;
+  let i=sel.words.find(i=>WORDS[i].d===dir);
+  if(i===undefined){i=sel.words[0];dir=WORDS[i].d;}
+  return i;
+}
+function select(o){ again=(sel===o); sel=o; activeIdx(); if(document.activeElement!==o.el) o.el.focus(); refresh(); }
+function toggleDir(){
+  if(!sel) return; const other=dir==='across'?'down':'across';
+  if(sel.words.some(i=>WORDS[i].d===other)){dir=other;refresh();}
+}
+function step(dr,dc){ if(!sel) return; const n=cells.get(key(sel.r+dr,sel.c+dc)); if(n){again=false;select(n);} }
+function move(k){
+  const i=activeIdx(); if(i===null) return;
+  const list=cellsOf(WORDS[i]), idx=list.findIndex(([r,c])=>r===sel.r&&c===sel.c), nx=list[idx+k];
+  if(nx){again=false;select(cells.get(key(...nx)));}
+}
+
+function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+function startTimer(){ if(timer||solvedOnce) return; t0=Date.now()-(elapsed*1000); timer=setInterval(()=>{elapsed=Math.floor((Date.now()-t0)/1000);$('time').textContent=fmt(elapsed);},500); }
+let elapsed=0;
+
+function refresh(){
+  const ai=activeIdx(), act=ai===null?[]:cellsOf(WORDS[ai]).map(([r,c])=>key(r,c));
+  cells.forEach((o,k)=>{
+    o.el.classList.toggle('inword',act.includes(k));
+    o.el.classList.toggle('sel',sel===o);
+    o.el.classList.toggle('hinted',o.hinted);
+    o.el.readOnly=o.hinted;
+  });
+  WORDS.forEach((w,i)=>{
+    const li=$('clue'+i);
+    li.classList.toggle('active',i===ai);
+    li.classList.toggle('done',cellsOf(w).every(([r,c])=>ok(cells.get(key(r,c)))));
+  });
+  const list=[...cells.values()], filled=list.filter(o=>o.el.value).length, good=list.filter(ok).length;
+  $('fill').textContent=filled+'/'+list.length;
+  $('hints').textContent=list.filter(o=>o.hinted).length;
+  $('bar').style.width=(good/list.length*100)+'%';
+  const solved=good===list.length;
+  $('win').classList.toggle('show',solved);
+  if(solved&&timer){clearInterval(timer);timer=null;solvedOnce=true;}
+}
+
+function reveal(o){ o.el.value=o.ch; o.hinted=true; o.el.classList.remove('wrong','right'); startTimer(); }
+$('bLetter').onclick=()=>{
+  let t=null;
+  if(sel&&!ok(sel)) t=sel;
+  if(!t){const ai=activeIdx(); if(ai!==null) t=cellsOf(WORDS[ai]).map(([r,c])=>cells.get(key(r,c))).find(o=>!ok(o))||null;}
+  if(!t){const bad=[...cells.values()].filter(o=>!ok(o)); if(bad.length) t=bad[Math.floor(Math.random()*bad.length)];}
+  if(t){reveal(t);sel=t;} refresh();
+};
+$('bWord').onclick=()=>{
+  const ai=activeIdx(); if(ai===null) return;
+  cellsOf(WORDS[ai]).forEach(([r,c])=>reveal(cells.get(key(r,c)))); refresh();
+};
+$('bCheck').onclick=()=>{
+  cells.forEach(o=>{o.el.classList.remove('wrong','right'); if(o.el.value&&!o.hinted) o.el.classList.add(ok(o)?'right':'wrong');});
+  setTimeout(()=>cells.forEach(o=>o.el.classList.remove('wrong','right')),2500);
+};
+$('bReset').onclick=()=>{
+  cells.forEach(o=>{o.el.value='';o.hinted=false;o.el.classList.remove('wrong','right');});
+  clearInterval(timer);timer=null;elapsed=0;solvedOnce=false;$('time').textContent='00:00';refresh();
+};
+
+['across','down'].forEach(d=>{
+  const ol=$(d==='across'?'cAcross':'cDown');
+  WORDS.map((w,i)=>({w,i})).filter(x=>x.w.d===d).sort((a,b)=>a.w.n-b.w.n).forEach(({w,i})=>{
+    const li=document.createElement('li'); li.id='clue'+i;
+    li.innerHTML=`<b>${w.n}</b><span>${w.q} <small>(${w.a.length})</small></span>`;
+    li.onclick=()=>{dir=w.d;again=false;const f=cellsOf(w).map(([r,c])=>cells.get(key(r,c))).find(o=>!o.el.value)||cells.get(key(w.r,w.c));select(f);};
+    ol.appendChild(li);
+  });
+});
+refresh();
+</script>
+</body>
+</html>
